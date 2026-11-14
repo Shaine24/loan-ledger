@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Loan Ledger
 
-## Getting Started
+A quiet, pale dashboard for the consolidated **loan due** and **NPA account** sheets —
+balances, provisions, classification, ageing and branch exposure.
 
-First, run the development server:
+- Next.js 16 (App Router, TypeScript, Tailwind v4)
+- Supabase for data (Postgres + PostgREST, public read-only views)
+- Vercel for hosting
+- GitHub for source
+
+## Pages
+
+- `/` — position summary: totals, NPA classification donut, branch and product exposure
+- `/loan-dues` — every account with outstanding instalment / interest / other dues, searchable and filterable
+- `/npa` — every NPA account with class, balance, provision %, dates, searchable and filterable
+- `/account/[accNo]` — full account card combining both sheets
+
+## Data
+
+Two Supabase tables hold the consolidated sheets:
+
+- `public.loan_due` ← `LoanDueConsolidated.xls`
+- `public.npa_accounts` ← `Consolidated_Npa_Account.xls`
+- `public.datasets` ← one row per import (source file, row count, total, timestamp)
+
+Aggregation views (`v_summary`, `v_npa_by_type`, `v_npa_by_branch`, `v_npa_by_product`,
+`v_loan_due_by_branch`, `v_loan_due_by_type`, `v_filter_options`) feed the dashboard.
+RLS is on with a public `select` policy; the browser only ever holds the anon key.
+
+## Refreshing when a new sheet arrives
+
+1. Convert the sheet to CSV. The NPA export is HTML-flavoured `.xls` (parse `<tr>/<td>`);
+   the loan due export is BIFF `.xls` (use `xlrd`).
+2. Push it into Supabase — the importer truncates and reloads, then stamps `datasets`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+python3 scripts/import_data.py --loan-due path/to/loan_due.csv --npa path/to/npa_accounts.csv
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Pages are rendered per request (`force-dynamic`), so no redeploy is needed — reload the site.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Environment (`.env.local` locally, project env vars on Vercel):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+```
 
-## Learn More
+## Local development
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm install
+pnpm dev        # http://localhost:3000
+pnpm build && pnpm start
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `scripts/schema.sql` — tables, indexes, RLS policies
+- `scripts/views.sql` — aggregation views and grants
+- `scripts/import_data.py` — CSV → Supabase importer (chunked inserts, date normalisation)
 
-## Deploy on Vercel
+## Design notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Warm ivory paper, sage and sand accents, hairline rules, and a serif display face
+(Instrument Serif) over Inter for figures. Amounts render in Indian numbering
+(lakh / crore). Tables paginate 25/50/100 rows server-side and switch to cards on phones.
