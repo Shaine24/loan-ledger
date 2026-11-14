@@ -29,15 +29,32 @@ RLS is on with a public `select` policy; the browser only ever holds the anon ke
 
 ## Refreshing when a new sheet arrives
 
-1. Convert the sheet to CSV. The NPA export is HTML-flavoured `.xls` (parse `<tr>/<td>`);
-   the loan due export is BIFF `.xls` (use `xlrd`).
+1. Convert the exports to CSV (handles both BIFF `.xls` and the HTML-flavoured `.xls`):
+
+```bash
+python3 scripts/convert_sheets.py --loan-due LoanDueConsolidated.xls \
+    --npa Consolidated_Npa_Account.xls --out converted
+```
+
 2. Push it into Supabase — the importer truncates and reloads, then stamps `datasets`:
 
 ```bash
-python3 scripts/import_data.py --loan-due path/to/loan_due.csv --npa path/to/npa_accounts.csv
+python3 scripts/import_data.py --loan-due converted/loan_due.csv \
+    --npa converted/npa_accounts.csv
 ```
 
 3. Pages are rendered per request (`force-dynamic`), so no redeploy is needed — reload the site.
+
+`xlrd` (for BIFF `.xls`) is the only extra requirement: `python3 -m pip install --user xlrd`.
+
+## Deploying
+
+```bash
+vercel --prod
+```
+
+The Vercel project is linked to this folder (`shaine24/loan-ledger`). Pushing to GitHub does
+not auto-deploy yet — the Vercel GitHub app needs to be installed on the account first.
 
 Environment (`.env.local` locally, project env vars on Vercel):
 

@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   title: "Loan Ledger — NPA & Loan Due Consolidation",
   description:
     "A quiet dashboard for the consolidated loan due and NPA account sheets: balances, provisions, classification and branch exposure.",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
